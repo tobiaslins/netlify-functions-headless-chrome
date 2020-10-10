@@ -1,54 +1,48 @@
-const chromium = require('chrome-aws-lambda')
-const puppeteer = require('puppeteer-core')
+const chromium = require("chrome-aws-lambda");
+const puppeteer = require("puppeteer-core");
 
 exports.handler = async (event, context) => {
-  let theTitle = null
-  let browser = null
-  console.log('spawning chrome headless')
+  let browser = null;
+  let screenshot;
+  console.log("spawning chrome headless");
   try {
-    const executablePath = await chromium.executablePath
+    const executablePath = await chromium.executablePath;
 
     // setup
     browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: executablePath,
       headless: chromium.headless,
-    })
+      defaultViewport: { height: 900, width: 900 },
+    });
 
     // Do stuff with headless chrome
-    const page = await browser.newPage()
-    const targetUrl = 'https://davidwells.io'
+    const page = await browser.newPage();
+    const targetUrl = "https://tobi.sh";
 
-    // Goto page and then do stuff
     await page.goto(targetUrl, {
-      waitUntil: ["domcontentloaded", "networkidle0"]
-    })
+      waitUntil: ["domcontentloaded", "networkidle0"],
+    });
 
-    await page.waitForSelector('#phenomic')
-
-    theTitle = await page.title();
-
-    console.log('done on page', theTitle)
-
+    screenshot = await page.screenshot({ encoding: "binary" });
   } catch (error) {
-    console.log('error', error)
+    console.log("error", error);
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: error
-      })
-    }
+        error: error,
+      }),
+    };
   } finally {
     // close browser
     if (browser !== null) {
-      await browser.close()
+      await browser.close();
     }
   }
 
   return {
     statusCode: 200,
-    body: JSON.stringify({
-      title: theTitle,
-    })
-  }
-}
+    body: screenshot.toString("base64"),
+    isBase64Encoded: true,
+  };
+};
